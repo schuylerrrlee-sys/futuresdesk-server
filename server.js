@@ -23,7 +23,9 @@ const RSS_SOURCES = [
   { name: 'Bloomberg Energy',      url: 'https://feeds.bloomberg.com/energy/news.rss',                 tag: 'BLOOMBERG', color: '#E24B4A' },
 
   // Reuters
-  { name: 'Reuters Economy',       url: 'https://feeds.reuters.com/reuters/businessNews',               tag: 'REUTERS',   color: '#FF6600' },
+  { name: 'AP Business',           url: 'https://feeds.apnews.com/rss/business',                        tag: 'AP NEWS',   color: '#FF6600' },
+  { name: 'AP Economy',            url: 'https://feeds.apnews.com/rss/economy',                         tag: 'AP NEWS',   color: '#FF6600' },
+  { name: 'Investing.com',         url: 'https://www.investing.com/rss/news.rss',                       tag: 'INVESTING', color: '#FF8C00' },
 
   // Federal Reserve
   { name: 'Fed Press Releases',    url: 'https://www.federalreserve.gov/feeds/press_all.xml',          tag: 'FED',       color: '#7F77DD' },
@@ -35,6 +37,7 @@ const RSS_SOURCES = [
 
   // WSJ
   { name: 'WSJ Markets',           url: 'https://feeds.a.dj.com/rss/RSSMarketsMain.xml',               tag: 'WSJ',       color: '#004B87' },
+  { name: 'WSJ Economy',            url: 'https://feeds.a.dj.com/rss/WSJcomUSBusiness.xml',                tag: 'WSJ',       color: '#004B87' },
 
   // CNBC
   { name: 'CNBC Economy',          url: 'https://www.cnbc.com/id/20910258/device/rss/rss.html',        tag: 'CNBC',      color: '#005594' },
