@@ -1,0 +1,12 @@
+{
+  "name": "futuresdesk-server",
+  "version": "1.0.0",
+  "description": "FuturesDesk webhook receiver for TradingView level alerts",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "dependencies": {
+    "express": "^4.18.2"
+  }
+}
