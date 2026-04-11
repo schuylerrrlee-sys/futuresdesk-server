@@ -17,18 +17,33 @@ const NEWS_TTL = 60 * 1000; // 60 second cache
 
 // ── RSS SOURCES ────────────────────────────────────────────────────────────
 const RSS_SOURCES = [
+  // Bloomberg — core macro
   { name: 'Bloomberg Economy',     url: 'https://feeds.bloomberg.com/economics/news.rss',              tag: 'BLOOMBERG', color: '#E24B4A' },
   { name: 'Bloomberg Commodities', url: 'https://feeds.bloomberg.com/markets/commodities/news.rss',    tag: 'BLOOMBERG', color: '#E24B4A' },
   { name: 'Bloomberg Energy',      url: 'https://feeds.bloomberg.com/energy/news.rss',                 tag: 'BLOOMBERG', color: '#E24B4A' },
-  { name: 'Reuters Business',      url: 'https://feeds.reuters.com/reuters/businessNews',               tag: 'REUTERS',   color: '#FF6600' },
+
+  // Reuters
+  { name: 'Reuters Economy',       url: 'https://feeds.reuters.com/reuters/businessNews',               tag: 'REUTERS',   color: '#FF6600' },
+
+  // Federal Reserve
   { name: 'Fed Press Releases',    url: 'https://www.federalreserve.gov/feeds/press_all.xml',          tag: 'FED',       color: '#7F77DD' },
   { name: 'Fed Speeches',          url: 'https://www.federalreserve.gov/feeds/speeches.xml',           tag: 'FED',       color: '#7F77DD' },
   { name: 'NY Fed',                url: 'https://www.newyorkfed.org/xml/feeds/research.xml',           tag: 'NY FED',    color: '#7F77DD' },
-  { name: 'MarketWatch Headlines', url: 'https://feeds.marketwatch.com/marketwatch/realtimeheadlines/',tag: 'MKT WATCH', color: '#378ADD' },
-  { name: 'MarketWatch Pulse',     url: 'https://feeds.marketwatch.com/marketwatch/marketpulse/',      tag: 'MKT WATCH', color: '#378ADD' },
+
+  // ForexLive — fastest real-time macro commentary
   { name: 'ForexLive',             url: 'https://www.forexlive.com/feed/news',                         tag: 'FOREXLIVE', color: '#1D9E75' },
-  { name: 'Benzinga Economics',    url: 'https://www.benzinga.com/feed/economics',                     tag: 'BENZINGA',  color: '#1D9E75' },
-  { name: 'Seeking Alpha',         url: 'https://seekingalpha.com/market_currents.xml',                tag: 'S. ALPHA',  color: '#EF9F27' },
+
+  // WSJ
+  { name: 'WSJ Markets',           url: 'https://feeds.a.dj.com/rss/RSSMarketsMain.xml',               tag: 'WSJ',       color: '#004B87' },
+
+  // CNBC
+  { name: 'CNBC Economy',          url: 'https://www.cnbc.com/id/20910258/device/rss/rss.html',        tag: 'CNBC',      color: '#005594' },
+
+  // White House — official Trump statements, EOs, press briefings
+  { name: 'White House',           url: 'https://www.whitehouse.gov/feed/',                            tag: 'WHITE HSE', color: '#B22222' },
+
+  // C-SPAN — Trump speeches, congressional hearings
+  { name: 'C-SPAN',                url: 'https://www.c-span.org/assets/rss/podcast.xml',               tag: 'C-SPAN',    color: '#1A1A5E' },
 ];
 
 // Futures-relevant keywords
@@ -39,7 +54,7 @@ const KEYWORDS = [
   's&p','nasdaq','dow','futures','market','stocks','equities',
   'trump','tariff','trade','china','dollar','treasury','yield',
   'recession','manufacturing','pmi','retail sales','eia','inventory',
-  'jackson hole','beige book','jobless claims','nonfarm','non-farm',
+  'jackson hole','beige book','jobless claims','nonfarm','non-farm','trump','white house','executive order','ceasefire','iran','china','trade war','sanction','strategic reserve','opec+','debt ceiling',
   'debt ceiling','deficit','stimulus','quantitative','taper','hawkish','dovish',
 ];
 
