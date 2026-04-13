@@ -4,10 +4,12 @@
 // Deploy on Railway — PORT set automatically via process.env.PORT
 
 const express = require('express');
+const newsRouter = require('./routes/news');
 const https = require('https');
 const http = require('http');
 const app = express();
 app.use(express.json());
+app.use('/api/news', newsRouter);
 
 // ── IN-MEMORY STORES ───────────────────────────────────────────────────────
 const levelsStore = {};
