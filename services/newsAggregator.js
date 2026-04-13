@@ -308,7 +308,14 @@ async function fetchTrump() {
 }
 
 // ── SOURCE MAP ─────────────────────────────────────────────────────────────
-const SOURCE_FETCHERS = { fed, nyfed, cnbc, finnhub, polygon, trump };
+const SOURCE_FETCHERS = {
+  fed:     fetchFed,
+  nyfed:   fetchNYFed,
+  cnbc:    fetchCNBC,
+  finnhub: fetchFinnhub,
+  polygon: fetchPolygon,
+  trump:   fetchTrump,
+};
 // Re-map to actual functions (names must match keys)
 const FETCHERS = {
   fed:     fetchFed,
