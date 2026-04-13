@@ -111,7 +111,7 @@ function normalize(raw, sourceKey, subCategory) {
     sourceLabel: src.label,
     sourceColor: src.color,
     category:    subCategory || src.category,
-    title:       (raw.title || '').replace(/&amp;/g,'&').replace(/&lt;/g,'<').replace(/&gt;/g,'>').replace(/&#39;/g,"'").replace(/&quot;/g,'"').trim(),
+   title:       (raw.title || '').replace(/&amp;/g,'&').replace(/&lt;/g,'<').replace(/&gt;/g,'>').replace(/&#39;/g,"'").replace(/&quot;/g,'"').replace(/&apos;/g,"'").replace(/&#x27;/g,"'").replace(/&#x2F;/g,'/').trim(),
     summary:     (raw.summary || raw.description || raw.contentSnippet || '').replace(/<[^>]+>/g,'').slice(0,400).trim(),
     url:         raw.link  || raw.url   || raw.article_url || '',
     publishedAt: raw.pubDate || raw.published_utc || raw.datetime || new Date().toISOString(),
