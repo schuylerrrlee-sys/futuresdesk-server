@@ -14,7 +14,6 @@ const http  = require('http');
 const CACHE_TTL_MS = {
   fed:      5 * 60 * 1000,   // Fed moves slow — 5 min
   nyfed:    5 * 60 * 1000,
-  cnbc:     90 * 1000,        // CNBC breaks fast — 90 sec
   finnhub:  2 * 60 * 1000,
   polygon:  2 * 60 * 1000,
   trump:    60 * 1000,        // Truth Social — 60 sec
@@ -23,7 +22,6 @@ const CACHE_TTL_MS = {
 const SOURCES = {
   fed:     { label: 'Federal Reserve',    category: 'macro',   color: '#1e3a5f' },
   nyfed:   { label: 'NY Fed',             category: 'macro',   color: '#1e3a5f' },
-  cnbc:    { label: 'CNBC Markets',       category: 'market',  color: '#0059b3' },
   finnhub: { label: 'Finnhub',            category: 'market',  color: '#1db954' },
   polygon: { label: 'Polygon.io',         category: 'market',  color: '#7b5ea7' },
   trump:   { label: 'Trump / Truth Social', category: 'political', color: '#b22222' },
@@ -111,7 +109,7 @@ function normalize(raw, sourceKey, subCategory) {
     sourceLabel: src.label,
     sourceColor: src.color,
     category:    subCategory || src.category,
-   title:       (raw.title || '').replace(/&amp;/g,'&').replace(/&lt;/g,'<').replace(/&gt;/g,'>').replace(/&#39;/g,"'").replace(/&quot;/g,'"').replace(/&apos;/g,"'").replace(/&#x27;/g,"'").replace(/&#x2F;/g,'/').trim(),
+    title:       (raw.title || '').replace(/&amp;/g,'&').replace(/&lt;/g,'<').replace(/&gt;/g,'>').replace(/&#39;/g,"'").replace(/&quot;/g,'"').trim(),
     summary:     (raw.summary || raw.description || raw.contentSnippet || '').replace(/<[^>]+>/g,'').slice(0,400).trim(),
     url:         raw.link  || raw.url   || raw.article_url || '',
     publishedAt: raw.pubDate || raw.published_utc || raw.datetime || new Date().toISOString(),
@@ -308,19 +306,9 @@ async function fetchTrump() {
 }
 
 // ── SOURCE MAP ─────────────────────────────────────────────────────────────
-const SOURCE_FETCHERS = {
-  fed:     fetchFed,
-  nyfed:   fetchNYFed,
-  cnbc:    fetchCNBC,
-  finnhub: fetchFinnhub,
-  polygon: fetchPolygon,
-  trump:   fetchTrump,
-};
-// Re-map to actual functions (names must match keys)
 const FETCHERS = {
   fed:     fetchFed,
   nyfed:   fetchNYFed,
-  cnbc:    fetchCNBC,
   finnhub: fetchFinnhub,
   polygon: fetchPolygon,
   trump:   fetchTrump,
