@@ -3,7 +3,7 @@
 
 const express = require('express');
 const router  = express.Router();
-const { fetchNews, getSourceMeta } = require('../services/newsAggregator');
+const { fetchNews, getSourceMeta } = require('../newsAggregator');
 
 // ─────────────────────────────────────────────────────────────────────────────
 // GET /api/news
