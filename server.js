@@ -4,7 +4,7 @@
 // Deploy on Railway — PORT set automatically via process.env.PORT
 
 const express = require('express');
-const newsRouter = require('./routes/news');
+const newsRouter = require('./services/routes/news');
 const https = require('https');
 const http = require('http');
 const app = express();
