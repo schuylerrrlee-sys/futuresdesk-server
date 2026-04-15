@@ -11,7 +11,7 @@ const app = express();
 app.use(express.json());
 app.use('/api/news', newsRouter);
 app.use('/api/markets', require('./routes/markets'));
-app.use('/api/levels',  require('./routes/keyLevels'));
+// app.use('/api/levels', require('./routes/keyLevels')); // coming soon
 
 // ── IN-MEMORY STORES ───────────────────────────────────────────────────────
 const levelsStore = {};
@@ -41,7 +41,7 @@ const RSS_SOURCES = [
 
   // WSJ
   { name: 'WSJ Markets',           url: 'https://feeds.a.dj.com/rss/RSSMarketsMain.xml',               tag: 'WSJ',       color: '#004B87' },
-  { name: 'WSJ Economy',            url: 'https://feeds.a.dj.com/rss/WSJcomUSBusiness.xml',                tag: 'WSJ',       color: '#004B87' },
+  { name: 'WSJ Economy',           url: 'https://feeds.a.dj.com/rss/WSJcomUSBusiness.xml',             tag: 'WSJ',       color: '#004B87' },
 
   // CNBC
   { name: 'CNBC Economy',          url: 'https://www.cnbc.com/id/20910258/device/rss/rss.html',        tag: 'CNBC',      color: '#005594' },
@@ -100,7 +100,6 @@ function fetchUrl(url) {
         'Accept': 'application/rss+xml, application/xml, text/xml, */*',
       }
     }, (res) => {
-      // Follow redirects
       if (res.statusCode >= 300 && res.statusCode < 400 && res.headers.location) {
         return fetchUrl(res.headers.location).then(resolve).catch(reject);
       }
@@ -138,7 +137,7 @@ function parseRSS(xml, source) {
 
       const parsedDate = pubDate ? new Date(pubDate) : new Date();
       const ageMs = Date.now() - parsedDate.getTime();
-      if (ageMs > 24 * 60 * 60 * 1000) continue; // Skip items older than 24h
+      if (ageMs > 24 * 60 * 60 * 1000) continue;
 
       items.push({
         id: Buffer.from(source.tag + title).toString('base64').slice(0, 24),
@@ -152,9 +151,7 @@ function parseRSS(xml, source) {
         source: source.name,
         link: link || '',
       });
-    } catch (e) {
-      // Skip malformed items
-    }
+    } catch (e) {}
   }
 
   return items;
@@ -188,10 +185,8 @@ async function aggregateNews() {
   const log = results.map(r => r.value || r.reason);
   console.log(`[${new Date().toISOString()}] News aggregation:`, JSON.stringify(log));
 
-  // Sort by newest first
   allItems.sort((a, b) => new Date(b.time) - new Date(a.time));
 
-  // Deduplicate by headline similarity
   const seen = new Set();
   const deduped = allItems.filter(item => {
     const key = item.headline.toLowerCase().slice(0, 60).replace(/\s+/g, ' ');
@@ -276,7 +271,14 @@ app.get('/levels', (req, res) => {
 app.get('/', (req, res) => {
   res.json({
     status: 'FuturesDesk Server ✓',
-    endpoints: { news: '/news', newsFiltered: '/news?symbol=ES', newsRefresh: '/news/refresh', levels: '/levels/ES', webhook: 'POST /webhook' },
+    endpoints: {
+      news: '/api/news',
+      newsFiltered: '/api/news?symbol=ES',
+      markets: '/api/markets',
+      marketsSymbol: '/api/markets/ES',
+      levels: '/levels/ES',
+      webhook: 'POST /webhook',
+    },
     newsItems: newsCache.length,
     cacheAge: newsCache.length ? Math.floor((Date.now() - newsCacheTime) / 1000) + 's' : 'empty',
     levelSymbols: Object.keys(levelsStore),
@@ -287,7 +289,6 @@ app.get('/', (req, res) => {
 const PORT = process.env.PORT || 8080;
 app.listen(PORT, () => {
   console.log(`FuturesDesk server on port ${PORT}`);
-  // Pre-warm news cache
   aggregateNews().then(items => {
     newsCache = items;
     newsCacheTime = Date.now();
