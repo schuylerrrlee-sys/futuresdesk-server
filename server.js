@@ -5,13 +5,16 @@
 
 const express = require('express');
 const newsRouter = require('./services/routes/news');
+const pushRouter = require('./services/routes/push');
 const https = require('https');
 const http = require('http');
+const push = require('./services/pushNotifications');
 const app = express();
 app.use(express.json());
 app.use('/api/news', newsRouter);
 app.use('/api/markets', require('./services/routes/markets'));
-// app.use('/api/levels', require('./routes/keyLevels')); // coming soon
+app.use('/api/push', pushRouter);
+// app.use('/api/levels', require('./services/routes/keyLevels')); // coming soon
 
 // ── IN-MEMORY STORES ───────────────────────────────────────────────────────
 const levelsStore = {};
@@ -195,6 +198,16 @@ async function aggregateNews() {
     return true;
   });
 
+  // Send high-impact alerts for very new articles
+  const fiveMinAgo = Date.now() - 5 * 60 * 1000;
+  const highImpact = deduped.filter(item => {
+    const age = Date.now() - new Date(item.time).getTime();
+    const text = (item.headline + ' ' + item.description).toLowerCase();
+    const isHighImpact = ['fomc','federal reserve','powell','rate decision','cpi','nonfarm payroll','nfp','jobs report','opec','tariff','emergency','attack','blockade'].some(k => text.includes(k));
+    return isHighImpact && age < fiveMinAgo;
+  });
+  highImpact.forEach(item => push.sendHighImpactAlert(item).catch(() => {}));
+
   return deduped.slice(0, 60);
 }
 
@@ -293,5 +306,7 @@ app.listen(PORT, () => {
     newsCache = items;
     newsCacheTime = Date.now();
     console.log(`News cache: ${items.length} items ready`);
+    // Start morning briefing scheduler
+    push.startBriefingScheduler(() => Promise.resolve(newsCache));
   }).catch(e => console.log('Cache warm error:', e.message));
 });
