@@ -10,6 +10,8 @@ const http = require('http');
 const app = express();
 app.use(express.json());
 app.use('/api/news', newsRouter);
+app.use('/api/markets', require('./routes/markets'));
+app.use('/api/levels',  require('./routes/keyLevels'));
 
 // ── IN-MEMORY STORES ───────────────────────────────────────────────────────
 const levelsStore = {};
