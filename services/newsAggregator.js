@@ -16,7 +16,7 @@ const CACHE_TTL_MS = {
   nyfed:    5 * 60 * 1000,
   finnhub:  2 * 60 * 1000,
   polygon:  2 * 60 * 1000,
-  trump:    60 * 1000,        // Truth Social — 60 sec
+  trump:    2 * 60 * 1000,    // White House / Truth Social — 2 min
 };
 
 const SOURCES = {
@@ -151,9 +151,10 @@ async function fetchNYFed() {
   if (cached) return cached;
 
   const feeds = [
-    { url: 'https://www.newyorkfed.org/xml/feeds/all.xml',          sub: 'nyfed-general' },
-    { url: 'https://www.newyorkfed.org/xml/feeds/markets.xml',      sub: 'nyfed-markets' },
-    { url: 'https://www.newyorkfed.org/xml/feeds/repo-operations.xml', sub: 'nyfed-repo' },
+    { url: 'https://www.newyorkfed.org/xml/feeds/all.xml',              sub: 'nyfed-general'  },
+    { url: 'https://www.newyorkfed.org/xml/feeds/markets.xml',          sub: 'nyfed-markets'  },
+    { url: 'https://www.newyorkfed.org/xml/feeds/research.xml',         sub: 'nyfed-research' },
+    { url: 'https://www.newyorkfed.org/xml/feeds/medialibrary.xml',     sub: 'nyfed-media'    },
   ];
 
   const results = [];
@@ -286,23 +287,33 @@ async function fetchTrump() {
   const cached = getCached('trump');
   if (cached) return cached;
 
-  try {
-    const xml   = await fetchURL('https://truthsocial.com/@realDonaldTrump.rss');
-    const items = parseRSS(xml).slice(0, 25);
+  const results = [];
 
-    const results = items.map(item => normalize({
-      ...item,
-      title: item.title || item.description?.replace(/<[^>]+>/g,'').slice(0, 120) || 'Truth Social Post',
-      description: item.description?.replace(/<[^>]+>/g,'').slice(0, 500) || '',
-      tags: ['trump', 'policy', 'tariffs', 'market-sentiment'],
-    }, 'trump', 'trump'));
+  // Try multiple Trump/White House sources
+  const trumpSources = [
+    { url: 'https://www.whitehouse.gov/feed/',            label: 'White House' },
+    { url: 'https://www.whitehouse.gov/news/feed/',       label: 'WH News'     },
+    { url: 'https://truthsocial.com/@realDonaldTrump.rss', label: 'Truth Social' },
+  ];
 
-    setCache('trump', results);
-    return results;
-  } catch (e) {
-    console.warn('[news] Trump RSS error:', e.message);
-    return [];
+  for (const src of trumpSources) {
+    try {
+      const xml   = await fetchURL(src.url);
+      const items = parseRSS(xml).slice(0, 15);
+      results.push(...items.map(item => normalize({
+        ...item,
+        title: item.title || item.description?.replace(/<[^>]+>/g,'').slice(0, 120) || 'White House Update',
+        description: item.description?.replace(/<[^>]+>/g,'').slice(0, 500) || '',
+        tags: ['trump', 'policy', 'tariffs', 'market-sentiment', 'executive-order'],
+      }, 'trump', 'trump')));
+      if (results.length > 0) break; // Stop after first successful source
+    } catch (e) {
+      console.warn(`[news] Trump source (${src.label}) error:`, e.message);
+    }
   }
+
+  setCache('trump', results);
+  return results;
 }
 
 // ── SOURCE MAP ─────────────────────────────────────────────────────────────
