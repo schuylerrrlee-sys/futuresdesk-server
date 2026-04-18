@@ -12,21 +12,23 @@ const http  = require('http');
 
 // ── CONFIG ─────────────────────────────────────────────────────────────────
 const CACHE_TTL_MS = {
-  fed:      3 * 60 * 1000,   // Fed — 3 min
-  nyfed:    3 * 60 * 1000,
-  finnhub:  90 * 1000,        // Finnhub — 90 sec
-  polygon:  90 * 1000,        // Polygon — 90 sec
-  trump:    90 * 1000,        // White House — 90 sec
-  metals:   2 * 60 * 1000,   // Metals — 2 min
+  fed:        3 * 60 * 1000,
+  nyfed:      3 * 60 * 1000,
+  finnhub:    90 * 1000,
+  polygon:    90 * 1000,
+  trump:      90 * 1000,
+  metals:     2 * 60 * 1000,
+  rss:        90 * 1000,      // Fast RSS sources — 90 sec
 };
 
 const SOURCES = {
-  fed:     { label: 'Federal Reserve',    category: 'macro',   color: '#1e3a5f' },
-  nyfed:   { label: 'NY Fed',             category: 'macro',   color: '#1e3a5f' },
-  finnhub: { label: 'Finnhub',            category: 'market',  color: '#1db954' },
-  polygon: { label: 'Polygon.io',         category: 'market',  color: '#7b5ea7' },
-  trump:   { label: 'Trump / Truth Social', category: 'political', color: '#b22222' },
-  metals:  { label: 'Metals / Commodities',  category: 'commodity',  color: '#9CA3AF' },
+  fed:      { label: 'Federal Reserve',      category: 'macro',     color: '#1e3a5f' },
+  nyfed:    { label: 'NY Fed',               category: 'macro',     color: '#1e3a5f' },
+  finnhub:  { label: 'Finnhub',              category: 'market',    color: '#1db954' },
+  polygon:  { label: 'Polygon.io',           category: 'market',    color: '#7b5ea7' },
+  trump:    { label: 'White House',          category: 'political', color: '#b22222' },
+  metals:   { label: 'Metals / Commodities', category: 'commodity', color: '#9CA3AF' },
+  rss:      { label: 'Market News',          category: 'market',    color: '#FF8C00' },
 };
 
 // ── SIMPLE IN-MEMORY CACHE ─────────────────────────────────────────────────
@@ -417,6 +419,76 @@ async function fetchMetals() {
   return unique;
 }
 
+
+// ── SOURCE: FAST RSS FEEDS (ForexLive, MarketWatch, WSJ, CNBC, ZeroHedge) ──
+async function fetchRSS() {
+  const cached = getCached('rss');
+  if (cached) return cached;
+
+  const feeds = [
+    // ForexLive — fastest real-time macro commentary, posts every few minutes
+    { url: 'https://www.forexlive.com/feed/news',                           sub: 'forexlive'   },
+    // MarketWatch — very active, posts constantly throughout the day
+    { url: 'https://feeds.marketwatch.com/marketwatch/topstories/',         sub: 'marketwatch' },
+    // WSJ Markets — authoritative, frequent
+    { url: 'https://feeds.a.dj.com/rss/RSSMarketsMain.xml',                 sub: 'wsj-markets' },
+    { url: 'https://feeds.a.dj.com/rss/WSJcomUSBusiness.xml',               sub: 'wsj-biz'     },
+    // CNBC — multiple high-frequency feeds
+    { url: 'https://search.cnbc.com/rs/search/combinedcms/view.xml?partnerId=wrss01&id=15839069', sub: 'cnbc-markets'  },
+    { url: 'https://search.cnbc.com/rs/search/combinedcms/view.xml?partnerId=wrss01&id=20910258', sub: 'cnbc-economy'  },
+    // Reuters via AP (reuters changed their RSS structure)
+    { url: 'https://feeds.apnews.com/rss/business',                         sub: 'ap-business'  },
+    { url: 'https://feeds.apnews.com/rss/economy',                          sub: 'ap-economy'   },
+    // Investing.com — global coverage, very active
+    { url: 'https://www.investing.com/rss/news.rss',                        sub: 'investing'    },
+    // Zero Hedge — contrarian but extremely fast on macro/Fed news
+    { url: 'https://feeds.feedburner.com/zerohedge/feed',                   sub: 'zerohedge'   },
+    // Bloomberg (select feeds that are public)
+    { url: 'https://feeds.bloomberg.com/economics/news.rss',                sub: 'bloomberg-eco'},
+    { url: 'https://feeds.bloomberg.com/markets/commodities/news.rss',      sub: 'bloomberg-com'},
+  ];
+
+  const FUTURES_KEYWORDS = [
+    'fed','federal reserve','fomc','powell','inflation','cpi','pce','gdp',
+    'jobs','payroll','unemployment','interest rate','rate cut','rate hike',
+    'oil','crude','opec','gold','silver','commodity',
+    's&p','nasdaq','dow','futures','market','stocks','equities',
+    'trump','tariff','trade','treasury','yield','dollar',
+    'recession','pmi','retail sales','eia','inventory',
+    'hawkish','dovish','debt ceiling','stimulus','quantitative',
+  ];
+
+  function isRelevant(text) {
+    const t = text.toLowerCase();
+    return FUTURES_KEYWORDS.some(kw => t.includes(kw));
+  }
+
+  const results = [];
+  await Promise.allSettled(feeds.map(async ({ url, sub }) => {
+    try {
+      const xml   = await fetchURL(url);
+      const items = parseRSS(xml);
+      const relevant = items
+        .filter(item => isRelevant((item.title || '') + ' ' + (item.description || '')))
+        .slice(0, 12);
+      results.push(...relevant.map(item => normalize(item, 'rss', sub)));
+    } catch (e) {
+      console.warn(`[news] RSS source (${sub}) error:`, e.message);
+    }
+  }));
+
+  // Deduplicate by URL
+  const seen = new Set();
+  const unique = results.filter(item => {
+    if (!item.url || seen.has(item.url)) return false;
+    seen.add(item.url);
+    return true;
+  });
+
+  setCache('rss', unique);
+  return unique;
+}
+
 // ── SOURCE MAP ─────────────────────────────────────────────────────────────
 const FETCHERS = {
   fed:     fetchFed,
@@ -425,6 +497,7 @@ const FETCHERS = {
   polygon: fetchPolygon,
   trump:   fetchTrump,
   metals:  fetchMetals,
+  rss:     fetchRSS,
 };
 
 // ── MAIN EXPORT ────────────────────────────────────────────────────────────
