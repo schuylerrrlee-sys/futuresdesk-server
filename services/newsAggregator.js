@@ -12,12 +12,12 @@ const http  = require('http');
 
 // ── CONFIG ─────────────────────────────────────────────────────────────────
 const CACHE_TTL_MS = {
-  fed:      5 * 60 * 1000,   // Fed moves slow — 5 min
-  nyfed:    5 * 60 * 1000,
-  finnhub:  2 * 60 * 1000,
-  polygon:  2 * 60 * 1000,
-  trump:    2 * 60 * 1000,    // White House / Truth Social — 2 min
-  metals:   3 * 60 * 1000,    // Metals/commodities — 3 min
+  fed:      3 * 60 * 1000,   // Fed — 3 min
+  nyfed:    3 * 60 * 1000,
+  finnhub:  90 * 1000,        // Finnhub — 90 sec
+  polygon:  90 * 1000,        // Polygon — 90 sec
+  trump:    90 * 1000,        // White House — 90 sec
+  metals:   2 * 60 * 1000,   // Metals — 2 min
 };
 
 const SOURCES = {
