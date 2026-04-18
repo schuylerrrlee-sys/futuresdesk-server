@@ -20,7 +20,7 @@ app.use('/api/push', pushRouter);
 const levelsStore = {};
 let newsCache = [];
 let newsCacheTime = 0;
-const NEWS_TTL = 60 * 1000; // 60 second cache
+const NEWS_TTL = 30 * 1000; // 30 second cache
 
 // ── RSS SOURCES ────────────────────────────────────────────────────────────
 const RSS_SOURCES = [
@@ -309,4 +309,15 @@ app.listen(PORT, () => {
     // Start morning briefing scheduler
     push.startBriefingScheduler(() => Promise.resolve(newsCache));
   }).catch(e => console.log('Cache warm error:', e.message));
+
+  // Background auto-refresh every 2 minutes — keeps news fresh even with no requests
+  setInterval(async () => {
+    try {
+      newsCache = await aggregateNews();
+      newsCacheTime = Date.now();
+      console.log(`[auto-refresh] News cache updated: ${newsCache.length} items`);
+    } catch (e) {
+      console.log('[auto-refresh] Error:', e.message);
+    }
+  }, 2 * 60 * 1000);
 });
