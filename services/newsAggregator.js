@@ -354,7 +354,7 @@ async function fetchMetals() {
         return normalize({ ...item, tags }, 'metals', sub);
       }));
     } catch (e) {
-      console.warn(\`[news] Metals source (\${sub}) error:\`, e.message);
+      console.warn(`[news] Metals source (${sub}) error:`, e.message);
     }
   }
 
@@ -362,7 +362,7 @@ async function fetchMetals() {
   const finnhubKey = process.env.FINNHUB_API_KEY;
   if (finnhubKey) {
     try {
-      const data = await fetchJSON(\`https://finnhub.io/api/v1/company-news?symbol=SLV&from=\${new Date(Date.now()-86400000).toISOString().split('T')[0]}&to=\${new Date().toISOString().split('T')[0]}&token=\${finnhubKey}\`);
+      const data = await fetchJSON(`https://finnhub.io/api/v1/company-news?symbol=SLV&from=${new Date(Date.now()-86400000).toISOString().split('T')[0]}&to=${new Date().toISOString().split('T')[0]}&token=${finnhubKey}`);
       if (Array.isArray(data)) {
         results.push(...data.slice(0, 10).map(item => normalize({
           id:          String(item.id),
