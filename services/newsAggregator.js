@@ -343,16 +343,23 @@ async function fetchMetals() {
     try {
       const xml   = await fetchURL(url);
       const items = parseRSS(xml).slice(0, 15);
-      // Force-tag metals items with appropriate instrument tags
+      // Only include articles relevant to precious metals trading
       results.push(...items.map(item => {
         const text = ((item.title || '') + ' ' + (item.description || '')).toLowerCase();
         const tags = [...(item.tags || [])];
-        if (text.includes('silver') || text.includes('slv') || sub.includes('silver')) tags.push('slv', 'SI');
-        if (text.includes('gold') || text.includes('gld')) tags.push('gld', 'GC');
-        if (text.includes('copper')) tags.push('copper');
-        if (text.includes('platinum')) tags.push('platinum');
+
+        const isSilver = text.includes('silver') || text.includes('slv') || sub.includes('silver');
+        const isGold   = text.includes('gold') || text.includes('xau') || text.includes('gld') || sub.includes('gold');
+        const isMetal  = text.includes('platinum') || text.includes('palladium') || text.includes('precious metal');
+        const isMacro  = text.includes('fed') || text.includes('inflation') || text.includes('interest rate') || text.includes('safe haven');
+
+        // Skip if not actually about precious metals or macro drivers
+        if (!isSilver && !isGold && !isMetal && !isMacro) return null;
+
+        if (isSilver) tags.push('slv', 'SI');
+        if (isGold)   tags.push('gld', 'GC');
         return normalize({ ...item, tags }, 'metals', sub);
-      }));
+      }).filter(Boolean));
     } catch (e) {
       console.warn(`[news] Metals source (${sub}) error:`, e.message);
     }
