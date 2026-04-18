@@ -17,6 +17,7 @@ const CACHE_TTL_MS = {
   finnhub:  2 * 60 * 1000,
   polygon:  2 * 60 * 1000,
   trump:    2 * 60 * 1000,    // White House / Truth Social — 2 min
+  metals:   3 * 60 * 1000,    // Metals/commodities — 3 min
 };
 
 const SOURCES = {
@@ -25,6 +26,7 @@ const SOURCES = {
   finnhub: { label: 'Finnhub',            category: 'market',  color: '#1db954' },
   polygon: { label: 'Polygon.io',         category: 'market',  color: '#7b5ea7' },
   trump:   { label: 'Trump / Truth Social', category: 'political', color: '#b22222' },
+  metals:  { label: 'Metals / Commodities',  category: 'commodity',  color: '#9CA3AF' },
 };
 
 // ── SIMPLE IN-MEMORY CACHE ─────────────────────────────────────────────────
@@ -316,6 +318,98 @@ async function fetchTrump() {
   return results;
 }
 
+
+// ── SOURCE: METALS / SILVER / COMMODITIES ──────────────────────────────────
+// RSS feeds specifically covering silver, gold, and commodity markets
+async function fetchMetals() {
+  const cached = getCached('metals');
+  if (cached) return cached;
+
+  const feeds = [
+    // Most reliable metals feeds — broad coverage, rarely block
+    { url: 'https://www.mining.com/feed/',                                             sub: 'mining'      },
+    { url: 'https://www.resourceworld.com/feed/',                                      sub: 'resourcewld'  },
+    { url: 'https://investingnews.com/daily/resource-investing/precious-metals-investing/silver-investing/feed/', sub: 'inn-silver' },
+    { url: 'https://www.silverinstitute.org/news/feed/',                               sub: 'silverinst'  },
+    { url: 'https://goldsilver.com/blog/feed/',                                        sub: 'goldsilver'  },
+    { url: 'https://www.kitco.com/rss/kitconews.rss',                                  sub: 'kitco'       },
+    { url: 'https://www.silverdoctors.com/feed/',                                      sub: 'silverdocs'  },
+    // Bloomberg commodities already in server.js but lets add precious metals specifically
+    { url: 'https://feeds.bloomberg.com/markets/precious-metals/news.rss',             sub: 'bloomberg-pm'},
+  ];
+
+  const results = [];
+  for (const { url, sub } of feeds) {
+    try {
+      const xml   = await fetchURL(url);
+      const items = parseRSS(xml).slice(0, 15);
+      // Force-tag metals items with appropriate instrument tags
+      results.push(...items.map(item => {
+        const text = ((item.title || '') + ' ' + (item.description || '')).toLowerCase();
+        const tags = [...(item.tags || [])];
+        if (text.includes('silver') || text.includes('slv') || sub.includes('silver')) tags.push('slv', 'SI');
+        if (text.includes('gold') || text.includes('gld')) tags.push('gld', 'GC');
+        if (text.includes('copper')) tags.push('copper');
+        if (text.includes('platinum')) tags.push('platinum');
+        return normalize({ ...item, tags }, 'metals', sub);
+      }));
+    } catch (e) {
+      console.warn(\`[news] Metals source (\${sub}) error:\`, e.message);
+    }
+  }
+
+  // Also hit Finnhub specifically for silver if we have a key
+  const finnhubKey = process.env.FINNHUB_API_KEY;
+  if (finnhubKey) {
+    try {
+      const data = await fetchJSON(\`https://finnhub.io/api/v1/company-news?symbol=SLV&from=\${new Date(Date.now()-86400000).toISOString().split('T')[0]}&to=\${new Date().toISOString().split('T')[0]}&token=\${finnhubKey}\`);
+      if (Array.isArray(data)) {
+        results.push(...data.slice(0, 10).map(item => normalize({
+          id:          String(item.id),
+          title:       item.headline,
+          description: item.summary,
+          link:        item.url,
+          pubDate:     new Date(item.datetime * 1000).toISOString(),
+          tags:        ['slv', 'SI', 'silver', item.category].filter(Boolean),
+          image:       item.image,
+        }, 'metals', 'finnhub-slv')));
+      }
+    } catch (e) {
+      console.warn('[news] Finnhub SLV error:', e.message);
+    }
+  }
+
+  // Polygon — silver/metals news
+  const polygonKey = process.env.POLYGON_API_KEY;
+  if (polygonKey) {
+    try {
+      const data = await fetchJSON(`https://api.polygon.io/v2/reference/news?ticker=SLV&limit=15&order=desc&sort=published_utc&apiKey=${polygonKey}`);
+      if (data && data.results) {
+        results.push(...data.results.map(item => normalize({
+          id:          item.id,
+          title:       item.title,
+          description: item.description,
+          link:        item.article_url,
+          pubDate:     item.published_utc,
+          tags:        ['slv', 'SI', 'silver', ...(item.tickers || [])],
+          image:       item.image_url,
+        }, 'metals', 'polygon-slv')));
+      }
+    } catch (e) {
+      console.warn('[news] Polygon SLV error:', e.message);
+    }
+  }
+
+  const unique = [];
+  const seen = new Set();
+  for (const item of results) {
+    if (!seen.has(item.url)) { seen.add(item.url); unique.push(item); }
+  }
+
+  setCache('metals', unique);
+  return unique;
+}
+
 // ── SOURCE MAP ─────────────────────────────────────────────────────────────
 const FETCHERS = {
   fed:     fetchFed,
@@ -323,6 +417,7 @@ const FETCHERS = {
   finnhub: fetchFinnhub,
   polygon: fetchPolygon,
   trump:   fetchTrump,
+  metals:  fetchMetals,
 };
 
 // ── MAIN EXPORT ────────────────────────────────────────────────────────────
