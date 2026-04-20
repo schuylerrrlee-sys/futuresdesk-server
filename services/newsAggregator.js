@@ -31,6 +31,27 @@ const SOURCES = {
   rss:      { label: 'Market News',          category: 'market',    color: '#FF8C00' },
 };
 
+// ── HTML entity decoder ────────────────────────────────────────────────────
+function decodeEntities(str) {
+  return str
+    .replace(/&amp;/g,   '&')
+    .replace(/&lt;/g,    '<')
+    .replace(/&gt;/g,    '>')
+    .replace(/&quot;/g,  '"')
+    .replace(/&#39;/g,   "'")
+    .replace(/&apos;/g,  "'")
+    .replace(/&#8217;/g, '\u2019')  // right single quote '
+    .replace(/&#8216;/g, '\u2018')  // left single quote '
+    .replace(/&#8220;/g, '\u201C')  // left double quote "
+    .replace(/&#8221;/g, '\u201D')  // right double quote "
+    .replace(/&#8211;/g, '\u2013')  // en dash –
+    .replace(/&#8212;/g, '\u2014')  // em dash —
+    .replace(/&#160;/g,  ' ')       // non-breaking space
+    .replace(/&#(\d+);/g, (_, n) => String.fromCharCode(parseInt(n)))  // any numeric entity
+    .replace(/&[a-z]+;/gi, '')      // strip any remaining named entities
+    .trim();
+}
+
 // ── SIMPLE IN-MEMORY CACHE ─────────────────────────────────────────────────
 const _cache = {};
 
@@ -113,7 +134,7 @@ function normalize(raw, sourceKey, subCategory) {
     sourceLabel: src.label,
     sourceColor: src.color,
     category:    subCategory || src.category,
-    title:       (raw.title || '').replace(/&amp;/g,'&').replace(/&lt;/g,'<').replace(/&gt;/g,'>').replace(/&#39;/g,"'").replace(/&quot;/g,'"').trim(),
+    title:       decodeEntities((raw.title || '').trim()),
     summary:     (raw.summary || raw.description || raw.contentSnippet || '').replace(/<[^>]+>/g,'').slice(0,400).trim(),
     url:         raw.link  || raw.url   || raw.article_url || '',
     publishedAt: raw.pubDate || raw.published_utc || raw.datetime || new Date().toISOString(),
