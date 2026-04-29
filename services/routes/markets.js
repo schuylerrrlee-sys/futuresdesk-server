@@ -7,7 +7,7 @@
 
 const express = require('express');
 const router  = express.Router();
-const { fetchFuturesData, fetchAllFutures, fetchSessionLevels } = require('../services/futuresData');
+const { fetchFuturesData, fetchAllFutures, fetchSessionLevels } = require('../futuresData');
 
 // GET /api/markets
 router.get('/', async (req, res) => {
