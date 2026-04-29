@@ -7,7 +7,7 @@
 
 const express = require('express');
 const router  = express.Router();
-const { fetchFuturesData, fetchAllFutures } = require('../futuresData');
+const { fetchFuturesData, fetchAllFutures, fetchSessionLevels } = require('../services/futuresData');
 
 // GET /api/markets
 router.get('/', async (req, res) => {
@@ -28,6 +28,18 @@ router.get('/:symbol', async (req, res) => {
     res.json({ ok: true, data });
   } catch (e) {
     console.error(`[markets] Error for ${symbol}:`, e.message);
+    res.status(500).json({ ok: false, error: e.message });
+  }
+});
+
+// GET /api/markets/:symbol/levels — session highs/lows + claimed status
+router.get('/:symbol/levels', async (req, res) => {
+  const symbol = req.params.symbol.toUpperCase();
+  try {
+    const data = await fetchSessionLevels(symbol);
+    if (!data) return res.json({ ok: true, symbol, data: null, message: 'No intraday data yet' });
+    res.json({ ok: true, symbol, data });
+  } catch (e) {
     res.status(500).json({ ok: false, error: e.message });
   }
 });
