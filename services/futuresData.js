@@ -4,6 +4,71 @@
 // No API key required — Yahoo Finance unofficial API
 
 const https = require('https');
+// ── Alpaca API ─────────────────────────────────────────────────────────────
+const ALPACA_KEY    = process.env.ALPACA_KEY    || 'PK5GQDZOUHSCTU7IXSWUTQUBQT';
+const ALPACA_SECRET = process.env.ALPACA_SECRET || 'GWY3Y5SZ5DnfqVL5P8ujEEUQ8w1bym9kKP33VqLkTgqY';
+const ALPACA_BASE   = 'https://data.alpaca.markets/v2';
+
+// ETF proxies for futures (Alpaca doesn't carry futures directly)
+const ALPACA_TICKERS = {
+  ES:  'SPY',   // S&P 500
+  MES: 'SPY',
+  NQ:  'QQQ',   // Nasdaq 100
+  MNQ: 'QQQ',
+  YM:  'DIA',   // Dow Jones
+  MYM: 'DIA',
+  GC:  'GLD',   // Gold
+  MGC: 'GLD',
+  SI:  'SLV',   // Silver
+  CL:  'USO',   // Crude Oil
+  MCL: 'USO',
+  ZN:  'TLT',   // 10-Year Treasury
+  DX:  'UUP',   // US Dollar
+};
+
+async function fetchAlpacaBars(ticker, timeframe = '5Min', limit = 200) {
+  return new Promise((resolve, reject) => {
+    const url = `${ALPACA_BASE}/stocks/${ticker}/bars?timeframe=${timeframe}&limit=${limit}&feed=iex`;
+    const options = {
+      headers: {
+        'APCA-API-KEY-ID':     ALPACA_KEY,
+        'APCA-API-SECRET-KEY': ALPACA_SECRET,
+        'Accept': 'application/json',
+      },
+    };
+    https.get(url, options, (res) => {
+      let data = '';
+      res.on('data', chunk => { data += chunk; });
+      res.on('end', () => {
+        try { resolve(JSON.parse(data)); }
+        catch (e) { reject(e); }
+      });
+    }).on('error', reject);
+  });
+}
+
+async function fetchAlpacaLatestQuote(ticker) {
+  return new Promise((resolve, reject) => {
+    const url = `${ALPACA_BASE}/stocks/${ticker}/quotes/latest?feed=iex`;
+    const options = {
+      headers: {
+        'APCA-API-KEY-ID':     ALPACA_KEY,
+        'APCA-API-SECRET-KEY': ALPACA_SECRET,
+        'Accept': 'application/json',
+      },
+    };
+    https.get(url, options, (res) => {
+      let data = '';
+      res.on('data', chunk => { data += chunk; });
+      res.on('end', () => {
+        try { resolve(JSON.parse(data)); }
+        catch (e) { reject(e); }
+      });
+    }).on('error', reject);
+  });
+}
+
+
 
 // ── Futures ticker map ─────────────────────────────────────────────────────
 const TICKERS = {
@@ -323,17 +388,57 @@ const intradayCache = {};
 const INTRADAY_TTL = 5 * 60 * 1000;
 
 async function fetchSessionLevels(symbol) {
-  const ticker = TICKERS[symbol];
-  if (!ticker) return null;
-
   if (intradayCache[symbol] && Date.now() - intradayCache[symbol].fetchedAt < INTRADAY_TTL) {
     return intradayCache[symbol].data;
   }
 
+  // Try Alpaca first (more reliable), fall back to Yahoo Finance
+  const alpacaTicker = ALPACA_TICKERS[symbol];
+  const yahooTicker  = TICKERS[symbol];
+
   try {
-    const result = await fetchYahooIntraday(ticker);
+    let bars = [];
+
+    if (alpacaTicker) {
+      try {
+        const data = await fetchAlpacaBars(alpacaTicker, '5Min', 400);
+        if (data?.bars && data.bars.length > 0) {
+          // Normalize Alpaca bars to Yahoo-compatible format for calcSessionLevels
+          bars = data.bars.map(b => ({
+            ts:    Math.floor(new Date(b.t).getTime() / 1000),
+            open:  b.o,
+            high:  b.h,
+            low:   b.l,
+            close: b.c,
+          }));
+          console.log(`[session-levels] Using Alpaca data for ${symbol} (${alpacaTicker}): ${bars.length} bars`);
+        }
+      } catch (alpacaErr) {
+        console.warn(`[session-levels] Alpaca failed for ${symbol}, trying Yahoo:`, alpacaErr.message);
+      }
+    }
+
+    // Fallback to Yahoo if Alpaca didn't work
+    if (bars.length === 0 && yahooTicker) {
+      const result = await fetchYahooIntraday(yahooTicker);
+      if (result) {
+        const timestamps = result.timestamp || [];
+        const quotes     = result.indicators?.quote?.[0] || {};
+        bars = timestamps.map((ts, i) => ({
+          ts,
+          open:  quotes.open?.[i],
+          high:  quotes.high?.[i],
+          low:   quotes.low?.[i],
+          close: quotes.close?.[i],
+        })).filter(b => b.high && b.low);
+        console.log(`[session-levels] Using Yahoo data for ${symbol}: ${bars.length} bars`);
+      }
+    }
+
+    if (bars.length === 0) return null;
+
     const price  = cache[symbol]?.data?.price || null;
-    const levels = calcSessionLevels(result, price);
+    const levels = calcSessionLevelsFromBars(bars, price);
     intradayCache[symbol] = { data: levels, fetchedAt: Date.now() };
     console.log(`[session-levels] Updated ${symbol} — bias: ${levels?.sessionBias}`);
     return levels;
