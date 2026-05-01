@@ -10,6 +10,25 @@ const https = require('https');
 const http = require('http');
 const push = require('./services/pushNotifications');
 const app = express();
+
+// ── CORS — allow iPhone app + Vercel web app ───────────────────────────────
+app.use((req, res, next) => {
+  const allowed = [
+    'https://edgedesk-web.vercel.app',
+    'https://edgedesk-web-git-master-dylan-reeves-projects.vercel.app',
+    'http://localhost:3000',
+    'http://localhost:5173',
+  ];
+  const origin = req.headers.origin;
+  if (!origin || allowed.some(o => origin.startsWith(o))) {
+    res.setHeader('Access-Control-Allow-Origin', origin || '*');
+  }
+  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+  if (req.method === 'OPTIONS') return res.sendStatus(200);
+  next();
+});
+
 app.use(express.json());
 app.use('/api/news', newsRouter);
 app.use('/api/markets', require('./services/routes/markets'));
