@@ -2,6 +2,8 @@
 // - TradingView webhook receiver (ICT levels)
 // - Real-time RSS news aggregator: Bloomberg, Reuters, Fed, Benzinga, MarketWatch, ForexLive
 // Deploy on Railway — PORT set automatically via process.env.PORT
+// Allow Railway reverse proxy
+process.env.HOST = '0.0.0.0';
 
 const express = require('express');
 const newsRouter = require('./services/routes/news');
